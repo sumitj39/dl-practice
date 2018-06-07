@@ -20,7 +20,8 @@ X_test = X_test.astype('float32')
 X_train, X_test = X_train/255.0, X_test/255.0
 y_train = np_utils.to_categorical(y_train)
 y_test = np_utils.to_categorical(y_test)
-
+num_classes = y_test[0].shape[0]
+assert num_classes == 10
 
 #Pre Processing
 def print_shapes():
@@ -62,24 +63,58 @@ def cnn_ver1():
     print(model.summary())
     return model
 
+def cnn_ver2():
+    # [conv2d->dropout->conv2d->maxpool]*3->flatten->dropout->fc->dropout->fc->dropout->FC(output)
 
+    model = Sequential()
+    model.add(Conv2D(filters=32, kernel_size=(3,3), padding='same', activation='relu', input_shape=(3,32,32)))
+    model.add(Dropout(0.2))
+    model.add(Conv2D(filters=32, kernel_size=(3,3), padding='same', activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2,2)))
+
+    model.add(Conv2D(filters=64, kernel_size=(3, 3), padding='same', activation='relu'))
+    model.add(Dropout(0.2))
+    model.add(Conv2D(filters=64, kernel_size=(3, 3), padding='same', activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+
+    model.add(Conv2D(filters=128, kernel_size=(3, 3), padding='same', activation='relu'))
+    model.add(Dropout(0.2))
+    model.add(Conv2D(filters=32, kernel_size=(3, 3), padding='same', activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+
+    model.add(Flatten())
+    model.add(Dropout(0.2))
+    model.add(Dense(1024, activation='relu', kernel_constraint=maxnorm(3)))
+    model.add(Dropout(0.2))
+    model.add(Dense(512, activation='relu', kernel_constraint=maxnorm(3)))
+    model.add(Dropout(0.2))
+    model.add(Dense(num_classes, activation='softmax'))
+
+    epochs = 25
+    lrate = 0.01
+    decay = lrate / epochs
+    sgd = SGD(lr=lrate, momentum=0.9, decay=decay, nesterov=False)
+    model.compile(loss='categorical_crossentropy', optimizer=sgd, metrics=['accuracy'])
+    print(model.summary())
+    return model
+    pass
 #post-processing & conclusions
-def save_model(model):
+def save_model(model, jsonfilename, h5filename):
     model_json = model.to_json()
-    with open("model-objectrec.json", "w") as json_file:
+    with open(jsonfilename, "w") as json_file:
         json_file.write(model_json)
-    model.save_weights("model-objectrec.h5")
+    model.save_weights(h5filename)
     print("Saved model to disk")
 
 
-def load_json_module():
+def load_json_module(jsonfilename, h5filename):
     # load json and create model
-    json_file = open('model-objectrec.json', 'r')
+    json_file = open(jsonfilename, 'r')
     loaded_model_json = json_file.read()
     json_file.close()
     loaded_model = model_from_json(loaded_model_json)
     # load weights into new model
-    loaded_model.load_weights("model-objectrec.h5")
+    loaded_model.load_weights(h5filename)
     print("Loaded model from disk")
 
     # evaluate loaded model on test data
@@ -91,9 +126,9 @@ def main():
     #print_shapes()
     #plotimgs()
 
-    model = cnn_ver1()
+    model = cnn_ver2()
     model.fit(X_train, y_train, batch_size=64, epochs=10)
-    save_model(model)
+    save_model(model,"model-objectrec-ver2.json","model-objectrec-ver2.h5")
     scores = model.evaluate(X_test, y_test, verbose=0)
     print("Baseline Error: %.2f%%" % (100-scores[1]*100))
 
