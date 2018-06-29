@@ -126,9 +126,10 @@ def main():
     #print_shapes()
     #plotimgs()
 
-    model = cnn_ver2()
-    model.fit(X_train, y_train, batch_size=64, epochs=10)
-    save_model(model,"model-objectrec-ver2.json","model-objectrec-ver2.h5")
+    model = load_json_module("model-objectrec-ver2.json","model-objectrec-ver2.h5")
+    #model = cnn_ver2()
+    #model.fit(X_train, y_train, batch_size=64, epochs=1)
+    #save_model(model,"model-objectrec-ver2.json","model-objectrec-ver2.h5")
     scores = model.evaluate(X_test, y_test, verbose=0)
     print("Baseline Error: %.2f%%" % (100-scores[1]*100))
 
